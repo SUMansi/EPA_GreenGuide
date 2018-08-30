@@ -32,6 +32,7 @@ The Size of the Engine (i.e. Engine's Capacity/Displacement) has a huge impact o
 
 *Figure 1: Relationship between Engine Size, Gas Mileage and CO2 Emission*
 
+![alt text]( https://github.com/SUMansi/EPA_GreenGuide/blob/master/Fig1.png)
 <img src="StoryTellingDocument_files/figure-markdown_github/unnamed-chunk-5-1.png" angle=90 style="display: block; margin: auto;" />
 
 Engine Capacity determines the amount of fuel the engine burns. The larger the engine capacity, more likely it is to burn more fuel as it produces more power. Hence, the more fuel it uses per mile, the more CO2 it emits. Therefore, for maximum fuel efficiency, select a vehicle with engine capacity of less than or equal to 2 Liters.
