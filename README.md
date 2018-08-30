@@ -67,7 +67,7 @@ CVT & Automated Manual transmission type provides more gas mileage than any othe
 
 *Figure 3: Best Fuel Efficient Eco-Friendly Car*
 
-![alt text]( https://github.com/SUMansi/EPA_GreenGuide/blob/master/Fig2.png)
+![alt text]( https://github.com/SUMansi/EPA_GreenGuide/blob/master/Fig3.png)
 
 All the above listed cars are among the best environnmental performers and are powered by gasoline and have an engine capacity of less than or equal to 2 Liters.
 
