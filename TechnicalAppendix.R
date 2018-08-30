@@ -1,0 +1,1196 @@
+#' ---
+#' title: "Exploratory Data Analysis of Environment Protection Agency(EPA) Green Guide"
+#' author: 'From: Mansi Agarwal'
+#' date: '`r format(Sys.time(), "%B %d, %Y")`'
+#' output:
+#'   md_document:
+#'     variant: markdown_github
+#'     toc: yes
+#'     toc_depth: '3'
+#' ---
+#' ***
+#' 
+#' ## Objective of EDA
+#' 
+#' + Analyse data-set to summarize the main points
+#' + Examine the data to understand the underlying relationship between different variables
+#' + Detection of mistakes 
+#' 
+#' ## Code File Basics
+#' 
+#' ### Code Header
+## ------------------------------------------------------------------------
+# Course: BUAN 5210
+# Title: Final Project Technical Appendix 
+# Purpose: Analyse "Environmental Protection Agency"" Green Vehicle data to determine which vehicle is more efficient and less polluting
+
+#' 
+#' ### Clear Environment and Load packages  
+#' 
+## ----echo=TRUE, message=FALSE, warning=FALSE-----------------------------
+knitr::opts_chunk$set(echo = TRUE, tidy = TRUE)
+
+# Clear working directory (remove all objects)
+rm(list=ls(all=TRUE)) 
+
+# Load packages
+library(tidyverse)
+library(gridExtra)
+library(GGally)
+library(knitr)
+library(grid)
+library(reshape)
+library(reshape2)
+
+#' 
+#' ## Load Data to begin EDA 
+## ------------------------------------------------------------------------
+
+# Import EPA Green Vehicle Data 
+EPA.GV.Data <- read.csv("EPA_Green_Vehicle.csv", header = TRUE)
+
+#' 
+#' ### Analyse the Structure & Summary of data
+## ---- message=FALSE, warning=FALSE---------------------------------------
+
+#Structure of the dataset
+str(EPA.GV.Data)
+
+#Summary of the data set
+summary(EPA.GV.Data)
+
+
+#' 
+#' Observations from glimpse/summary of data:  
+#' 
+#' + Ten variables are numerical/integer    
+#'     - Maximum number of cylinder engine offered in a vehicle's is 16
+#'     - Biggest Engine Displacement has the capacity of 8 liters
+#'     - Air Pollution score & Greenhouse Gas Score ranges from 1(worst) to 10(best)  
+#'     
+#' + Eleven variables are factor  
+#'     - Most vehicle use a 2- wheel drive layout   
+#'     - 10 different classification of vehicle size are present  
+#'     - Gasoline is the most common used fuel  
+#'     - Most of the vehicles certified in California  
+#'     - Large number of vehicles are certified with **Federal Tier 3** emission standard  
+#'     - Most of the vehicles are not SmartWay Certified  
+#'     
+#' 
+#' ### Analyse the Visual Summary of data   
+## ---- fig.width=13, fig.height=6-----------------------------------------
+# Visualize numerical variables (i.e. Displ, Cyl, City.MPG.FT1, Hwy.MPG.FT1, Cmb.MPG.FT1, Comb.CO2.FT1, Air.Pollution.Score and Greenhouse.Gas.Score) together
+
+par(mfrow=c(3,3))
+  hist(EPA.GV.Data$Displ, main = "Histogram of Engine Displacement")
+  hist(EPA.GV.Data$Cyl, main = "Histogram of Engine Cylinders")
+  hist(EPA.GV.Data$City.MPG.FT1, main = "Histogram of City Fuel Economy")
+  hist(EPA.GV.Data$Hwy.MPG.FT1, main = "Histogram of Highway Fuel Economy")
+  hist(EPA.GV.Data$Cmb.MPG.FT1, main = "Histogram of combined City/Highway Fuel Economy")
+  hist(EPA.GV.Data$Air.Pollution.Score, main = "Histogram of Air Pollution Score")
+  hist(EPA.GV.Data$Greenhouse.Gas.Score, main = "Histogram of Greenhouse Gas Score")
+  hist(EPA.GV.Data$Comb.CO2.FT1, main = "Histogram of combined City/Highway CO2 tailpipe emissions")
+
+#' 
+#' Observations from visual summary of data:
+#' 
+#' + Combined City/Highway CO2 tailpipe emissions have a normal distribution across the data
+#' + Air Pollution Score is between 3 and 5 for most vehicles
+#' + Greenhouse Gas Score is between 2 and 6 for most vehicles
+#' + City , Highway and Combined(i.e. City/Highway) Fuel economy have a right skewed distribution 
+#' + Most vehicles have 4 or 6 engine cylinders
+#' + Most vehicles have an engine with a volume of 2 litres  
+#' 
+#' ***
+#' 
+#' ## Detailed EDA to examine the observations :
+#' 
+#' ### How different variables are Correlated?
+#' 
+## ---- message=FALSE, warning=FALSE---------------------------------------
+EPA.GV.Data %>%
+ select(Displ,Cyl,SmartWay,Air.Pollution.Score,Greenhouse.Gas.Score,City.MPG.FT1,Hwy.MPG.FT1,Cmb.MPG.FT1,Comb.CO2.FT1) %>%
+  ggpairs()
+
+#' 
+#' **Findings:**
+#' 
+#' 1. Engine displacement & magnitude of CO2 emission have strong positive correlation.
+#' 2. Greenhouse Gas score & fuel economy have strong positive correlation.
+#' 3. Fuel economy & CO2 emission have strong negative correlation.
+#' 4. Number of cylinders & engine displacement have strong linear relationship. As displacement is the total volume of all cylinders.
+#' 
+#' ### Which is the most common fuel used in motor vehicles? How many bi-fuel models are listed?
+#' 
+## ---- fig.width=8--------------------------------------------------------
+#To find and visualize the most common fuel used in motor vehicles
+F1<-
+EPA.GV.Data %>%
+  distinct(Model ,Fuel.Type1) %>%
+  group_by(Fuel.Type1) %>%
+  summarise(Count = n()) %>%
+    ggplot(aes(x=reorder(Fuel.Type1, Count), y=Count, fill=Fuel.Type1)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    guides(fill=FALSE) +
+    geom_text(aes(label = Count) , size = 5, vjust = -0.1, position = position_dodge(0.9)) +
+    theme_classic() +
+    ggtitle("Most Vehicles use Gasoline") +
+    xlab("Fuel Type") +
+    ylab("Count of motor vehicle models") +
+    theme(plot.title = element_text(size = 13, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10))
+
+#To find and visualize the count of dual fuel motor vehicles
+F2<-  
+EPA.GV.Data %>%
+  filter(Fuel.Type2 %in% c("Electricity", "Gas")) %>%
+  distinct(Model ,Fuel.Type1,Fuel.Type2) %>%
+  mutate(Fuel.Type = paste(Fuel.Type1,"Or",Fuel.Type2)) %>%
+  group_by(Fuel.Type) %>%
+  summarise(Count = n()) %>%
+    ggplot(aes(x=reorder(Fuel.Type, Count), y=Count, fill=Fuel.Type)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    guides(fill=FALSE) +
+    geom_text(aes(label = Count) , size = 5, vjust = -0.1, position = position_dodge(0.9)) +
+    theme_classic() +
+    ggtitle("39 Dual Fuel vehicle Models") +
+    xlab("Fuel Type") +
+    ylab("Count of motor vehicle models") +
+    theme(plot.title = element_text(size = 13, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10))
+
+grid.arrange(F1,F2, nrow=1)
+
+
+#' 
+#' **Findings:**
+#' 
+#' 1. Gasoline is the most common fuel used in motor vehicles.
+#' 2. 3 motor vehicle models runs only on electricity.
+#' 3. 39 Bi-Fuel models are available. For dual fuel vehicles "Gasoline and Ethanol" are the conventional fuel & "Electricity and Gas" are the alternative fuel.
+#' 4. Most of the Bi-Fuel models used "Ethanol Or Gas".
+#' 
+#' ### How many different motor vehicle models are present across each class of vehicle?
+#' 
+## ---- fig.width=13, fig.height=5-----------------------------------------
+#To find and visualize the total number of unique motor vehicle models are present across each class of vehicle
+D1 <-
+EPA.GV.Data %>%
+  distinct(Model ,Veh.Class) %>%
+  group_by(Veh.Class) %>%
+  summarise(Count = n()) %>%
+    ggplot(aes(x=reorder(Veh.Class, Count), y=Count, fill=Veh.Class)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    guides(fill=FALSE) +
+    geom_text(aes(label = Count) , size = 5, vjust = -0.1, position = position_dodge(0.9)) +
+    theme_classic() +
+    ggtitle("Small Cars have 189 different car models") +
+    xlab("Vehicle Class") +
+    ylab("Count of motor vehicle models") +
+    theme(plot.title = element_text(size = 14, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 13), axis.text = element_text(size = 10)) +
+    theme(axis.text.x = element_text(angle = 20, hjust = 1, vjust = 1))
+
+#To find and visualize whether 2WD or 4WD layout is used across each class of vehicle
+D2<-
+EPA.GV.Data %>%
+  distinct(Model ,Veh.Class, Drive) %>%
+  group_by(Veh.Class,Drive) %>%
+  summarise(Count = n()) %>%
+    ggplot(aes(x=reorder(Veh.Class, Count), y=Count, fill=Drive)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_text(aes(label = Count) , size = 5, vjust = -0.1, position = position_dodge(0.9)) +
+    theme_classic() +
+    ggtitle("Most motor vehicles use a 2-wheel drive layout") +
+    xlab("Vehicle Class") +
+    ylab("Count of motor vehicle models") +
+    theme(plot.title = element_text(size = 14, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 13), axis.text = element_text(size = 10)) +
+    theme(axis.text.x = element_text(angle = 20, hjust = 1, vjust = 1)) +
+    theme(legend.position = c(0.15,0.85)) +
+    theme(legend.background = element_rect(fill = "white", color = "black")) +
+    guides(fill = guide_legend(title = "Wheel-Drive"))
+
+grid.arrange(D1,D2, nrow=1)
+
+
+#' 
+#' **Findings:**
+#' 
+#' 1. Small Cars have 189 different car models, however Van has only 2 models available.
+#' 2. Most motor vehicles use a 2WD layout.
+#' 3. Standard SUV, Small SUV & Station wagon have more 4WD models than 2WD models.
+#' 4. Small cars have many variety of car models for both 2WD & 4WD vehicles.
+#' 
+#' ### List of motor vehicle models those have both 2WD & 4WD vehicles . 
+#' 
+## ------------------------------------------------------------------------
+#List of motor vehicle models those have both 2WD & 4WD vehicles
+kable(
+EPA.GV.Data %>%
+  distinct(Model, Drive) %>%
+  group_by(Model) %>%
+  summarise(Count = n()) %>%
+  filter(Count > 1) %>%
+  select(Model) %>%
+  head(10),
+align = "l",
+format = "html",
+#caption = "Motor vehicle models available in both 2WD and 4WD layout ",
+col.names = c("Motor Vehicle Model"))
+
+#' 
+#' 122 Motor vehicle models are available in both 2WD and 4WD layout.  
+#' 
+#' ### How many motor vehicle models are SmartWay certified?
+#' 
+## ------------------------------------------------------------------------
+#To find and visualize the number of SmartWay certified vehicles
+
+EPA.GV.Data %>%
+  distinct(Model,SmartWay) %>%
+  group_by(SmartWay) %>%
+  summarise(Count = n()) %>%
+    ggplot(aes(x=reorder(SmartWay, Count), y=Count, fill=SmartWay)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_text(aes(label = Count) , size = 5, vjust = -0.1, position = position_dodge(0.9)) +
+    theme_classic() +
+    guides(fill=FALSE) +
+    ggtitle("19 Motor Vehicles are among the best environmental performers") +
+    xlab("SmartWay Certified") +
+    ylab("Count of motor vehicle models") +
+    theme(plot.title = element_text(size = 13, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 12), axis.text = element_text(size = 11)) 
+
+
+#' 
+#' **Findings:**
+#' 
+#' 1. 84 Motor vehicles are SmartWay Certified.
+#' 2. SmartWay Elite certification is given to 19 Motor Vehicles. 
+#' 
+#' ### Are there any Zero Emission Vehicles? If yes, list their names.
+#' 
+## ------------------------------------------------------------------------
+kable(
+EPA.GV.Data %>%
+  filter(Stnd == "ZEV" ) %>%
+  select(Model,Veh.Class,Fuel.Type1,Stnd.Description,Air.Pollution.Score,Greenhouse.Gas.Score,SmartWay),
+align = "l",
+#format = "html",
+caption = "Zero Emission Electric Cars : Most environmentally friendly vehicle")
+
+#' 
+#' **Findings:**
+#' 
+#' 1. There are 3 zero emission vehicles, powered by electricity.
+#' 
+#' ### How Air Pollution Score & Greenhouse Gas Score distributed across various Motor Vehicle Models?
+#' 
+## ---- fig.width=8,fig.height=4-------------------------------------------
+#To visualize Air Pollution Score across various Motor Vehicle Models
+E1<-
+EPA.GV.Data %>%
+  distinct(Model,Air.Pollution.Score) %>%
+  group_by(Air.Pollution.Score) %>%
+  summarise(Count = n()) %>%
+    ggplot(aes(x=reorder(Air.Pollution.Score, Count), y=Count)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_text(aes(label = Count) , size = 5, vjust = -0.1, position = position_dodge(0.9)) +
+    theme_classic() +
+    guides(fill=FALSE) +
+    ggtitle("Most vehicles have Air Pollution Score of 3 ") +
+    xlab("Air Pollution Score") +
+    ylab("Count of motor vehicle models") +
+    theme(plot.title = element_text(size = 13, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 12), axis.text = element_text(size = 11)) 
+
+#To visualize Greenhouse Gas Score across various Motor Vehicle Models
+E2<-
+EPA.GV.Data %>%
+  distinct(Model,Greenhouse.Gas.Score) %>%
+  group_by(Greenhouse.Gas.Score) %>%
+  summarise(Count = n()) %>%
+    ggplot(aes(x=reorder(Greenhouse.Gas.Score, Count), y=Count)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_text(aes(label = Count) , size = 5, vjust = -0.1, position = position_dodge(0.9)) +
+    theme_classic() +
+    guides(fill=FALSE) +
+    ggtitle("Greenhouse Gas Score is\n less than 6 for most vehicles") +
+    xlab("Greenhouse Gas Score") +
+    ylab("Count of motor vehicle models") +
+    theme(plot.title = element_text(size = 13, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 12), axis.text = element_text(size = 11))
+
+grid.arrange(E1,E2, nrow=1)
+    
+
+#' 
+#' **Findings:**
+#' 
+#' 1. Air Pollution score is 10 only for 3 vehicles.
+#' 2. Air Pollution score is less than equal to 5 for majority of vehicles.
+#' 3. Greenhouse Gas Score is less than 6 for majority of vehicles.
+#' 
+#' ### What is the relationship between engine size and CO2 emission?
+#' 
+## ---- fig.width=10, fig.height=5-----------------------------------------
+
+#Relationship between engine size and CO2 emission for Cars
+D1<-
+EPA.GV.Data %>%
+  filter(Veh.Class %in% c("large car", "small car", "midsize car","station wagon")) %>%
+  group_by(Model,Displ,Veh.Class) %>%
+  summarise(CO2.Emission = mean(Comb.CO2.FT1)) %>%
+    ggplot(aes(x=Displ, y=CO2.Emission, color = Veh.Class)) +geom_point() + 
+    theme_light() +
+    ggtitle("The larger the engine, the more Co2 it will produce") +
+    xlab("Engine Displacement(Liters)") +
+    ylab("CO2 Emissions (Grams/Mile)") +
+    theme(plot.title = element_text(size = 13, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 12), axis.text = element_text(size = 11)) +
+    theme(legend.position = c(0.77,0.25)) +
+    theme(legend.background = element_rect(fill = "white", color = "black")) +
+    labs(color = "Vehicle Class (Cars)")
+
+#Relationship between engine size and CO2 emission for Trucks
+D2<-
+EPA.GV.Data %>%
+  filter(Veh.Class %in% c("minivan", "pickup", "small SUV","standard SUV", "special purpose", "van")) %>%
+  group_by(Model,Displ,Veh.Class) %>%
+  summarise(CO2.Emission = mean(Comb.CO2.FT1)) %>%
+    ggplot(aes(x=Displ, y=CO2.Emission, color = Veh.Class)) +
+    geom_point() + 
+    theme_light() +
+    ggtitle("Trucks emit more CO2 than Cars") +
+    xlab("Engine Displacement(Liters)") +
+    ylab("CO2 Emissions (Grams/Mile)") +
+    theme(plot.title = element_text(size = 13, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 12), axis.text = element_text(size = 11)) +
+    theme(legend.position = c(0.77,0.25)) +
+    theme(legend.background = element_rect(fill = "white", color = "black")) +
+    labs(color = "Vehicle Class (Trucks)") 
+
+grid.arrange(D1,D2, nrow=1)
+
+
+#' 
+#' **Findings:**
+#' 
+#' 1. Co2 production is directly related to the amount of fuel the engine burns.  
+#' 2. Engine Displacement/Size of Engine & CO2 Emissions have strong positive linear relationship. The larger the engine , more likely it is to burn more fuel , hence more CO2 it will produce.  
+#' 3. Heavier Vehicles emit more CO2 than light-weight vehicles. 
+#' 4. Mostly all the vehicles under Truck category emits more than 300 grams CO2 per mile.
+#' 
+#' ### What is the relationship between Fuel Economy and CO2 emission?
+#' 
+## ---- fig.width=10, fig.height=5-----------------------------------------
+
+#Relationship between Fuel Economy and CO2 emission for Cars
+FE1<-
+EPA.GV.Data %>%
+  filter(Veh.Class %in% c("large car", "small car", "midsize car","station wagon")) %>%
+  group_by(Model,Displ,Veh.Class) %>%
+  summarise(CO2.Emission = mean(Comb.CO2.FT1),
+            Cmb.Mileage = mean(Cmb.MPG.FT1)) %>%
+    ggplot(aes(x=Cmb.Mileage, y=CO2.Emission, color = Veh.Class)) + geom_point() + 
+    theme_light() +
+    ggtitle("Higher the Fuel Economy, Lower the CO2 Emissions") +
+    xlab("Combine Fuel Economy (MPG)") +
+    ylab("CO2 Emissions (Grams/Mile)") +
+    theme(plot.title = element_text(size = 13, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 12), axis.text = element_text(size = 11)) +
+    theme(legend.position = c(0.77,0.75)) +
+    theme(legend.background = element_rect(fill = "white", color = "black")) +
+    labs(color = "Vehicle Class (Cars)")
+
+#Relationship between Fuel Economy and CO2 emission for Trucks
+FE2<-
+EPA.GV.Data %>%
+  filter(Veh.Class %in% c("minivan", "pickup", "small SUV","standard SUV", "special purpose", "van")) %>%
+  group_by(Model,Displ,Veh.Class) %>%
+  summarise(CO2.Emission = mean(Comb.CO2.FT1),
+            Cmb.Mileage = mean(Cmb.MPG.FT1)) %>%
+    ggplot(aes(x=Cmb.Mileage, y=CO2.Emission, color = Veh.Class)) + geom_point() + 
+    theme_light() +
+    ggtitle("Trucks have higher CO2 Emission than Cars") +
+    xlab("Combine Fuel Economy (MPG)") +
+    ylab("CO2 Emissions (Grams/Mile)") +
+    theme(plot.title = element_text(size = 13, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 12), axis.text = element_text(size = 11)) +
+    theme(legend.position = c(0.21,0.22)) +
+    theme(legend.background = element_rect(fill = "white", color = "black")) +
+    labs(color = "Vehicle Class (Trucks)") 
+
+grid.arrange(FE1,FE2, nrow=1)
+
+
+#' 
+#' **Findings:**
+#' 
+#' 1. Car with better gas mileage have low CO2 Emissions.  
+#' 2. Fuel Economy & CO2 Emissions have strong negative linear relationship. The lower the fuel economy , more likely it is to burn more fuel , hence more CO2 it will produce.  
+#' 3. Heavier Vehicles emit more CO2 than light-weight vehicles.  
+#' 4. Mostly all the vehicles under Truck category emits more than 300 grams CO2 per mile.    
+#' 
+#' ### What is the relationship between Vehicle Transmission Type & Fuel Economy?
+#' 
+## ---- message=FALSE, warning=FALSE---------------------------------------
+#To Visualize the relationship between Fuel Economy & Transmission type
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  ggplot(aes(x=Transmission.Type, y = Cmb.MPG.FT1, fill = "#4271AE" )) +
+  geom_boxplot(color = "#1F3552") +
+  scale_y_continuous(name = "Combined City/Highway Fuel Economy(MPG)",
+                     breaks = seq(0, 140, 10)) +
+  scale_x_discrete(name = "Transmission Type") +
+  theme_bw() +
+  guides(fill=FALSE) +
+  ggtitle("Vehicles with Continuously Variable Transmission(CVT) are more Fuel Efficient",
+          subtitle = "Fuel Economy by Transmission type")
+
+
+#' 
+#' **Findings:**
+#' 
+#' 1. Vehicles with Continuously Variable Transmission(CVT) are more Fuel Efficient  
+#' 2. Automated Manual(i.e. AutoMan) has the most variation in Fuel Economy in comparision with other transmission types  
+#' 3. Very few vehicles have the combined mileage of more than 35 miles per gallon
+#' 4. On average ,vehicles with Manual(i.e. Man) transmission achieved an MPG of 25 while vehicles with Automatic(i.e. Auto) transmission achieved an MPG of 18, a difference of 7 more miles per gallon.
+#' 
+#' ### Which Gasoline Vehicles get more than 40 MPG in the City?
+#' 
+## ---- message=FALSE, warning=FALSE, fig.width=8, fig.height=5------------
+#To visualize the gasoline Vehicles that get more than 40 MPG in the City
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter( Fuel.Type1 == "Gasoline" , City.MPG.FT1 > 40) %>%
+  group_by(Model,Displ,Fuel.Type1) %>%
+  summarise(City.MPG = mean(City.MPG.FT1)) %>%
+  arrange(desc(City.MPG)) %>%
+    ggplot(aes(x=reorder(Model, desc(City.MPG)), y = City.MPG)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_text(aes(label = City.MPG) , size = 4, vjust = -0.1, position = position_dodge(0.9)) +
+    theme_classic() +
+    ggtitle("Gasoline Vehicles that get more than 40 MPG in the City") +
+    xlab("Vehicle Make & Model") +
+    ylab("City Fuel Economy (MPG)") +
+    theme(plot.title = element_text(size = 14, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 13), axis.text = element_text(size = 10)) +
+    theme(axis.text.x = element_text(angle = 50, hjust = 1, vjust = 1)) 
+
+#' 
+#' **Findings:**
+#' 
+#' 1. HYUNDAI Ioniq Blue is the most fuel efficient model in the market, rated at 57 MPG in the city.
+#' 2. 15 vehicle models rated at more than 40 MPG in the city.
+#' 
+#' ### Which Gasoline Vehicles get more than 40 MPG on the highway?
+#' 
+## ---- message=FALSE, warning=FALSE, fig.width=8, fig.height=5------------
+#To visualize the gasoline Vehicles that get more than 40 MPG in the City
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter( Fuel.Type1 == "Gasoline" , Hwy.MPG.FT1 > 40) %>%
+  group_by(Model,Displ,Fuel.Type1) %>%
+  summarise(Highway.MPG = mean(Hwy.MPG.FT1)) %>%
+  arrange(desc(Highway.MPG)) %>%
+    ggplot(aes(x=reorder(Model, desc(Highway.MPG)), y = Highway.MPG)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_text(aes(label = Highway.MPG) , size = 4, vjust = -0.1, position = position_dodge(0.9)) +
+    theme_classic() +
+    ggtitle("Gasoline Vehicles that get more than 40 MPG on the Highway") +
+    xlab("Vehicle Make & Model") +
+    ylab("Highway Fuel Economy (MPG)") +
+    theme(plot.title = element_text(size = 14, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 13), axis.text = element_text(size = 10)) +
+    theme(axis.text.x = element_text(angle = 50, hjust = 1, vjust = 1)) 
+
+#' 
+#' **Findings:**
+#' 
+#' 1. HYUNDAI Ioniq Blue is the most fuel efficient model in the market, rated at 59 MPG on the highway.
+#' 2. 17 vehicle models rated at more than 40 MPG on the highway.
+#' 
+#' ### Which vehicles get better fuel economy in city than on highway?
+#' 
+## ---- message=FALSE, warning=FALSE, fig.width=8, fig.height=5.5----------
+#List of vehicles that get better fuel economy in city than on highway
+TBL<-
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  group_by(Model,Displ,Fuel.Type1, SmartWay, Greenhouse.Gas.Score, Air.Pollution.Score) %>%
+  summarise(City.MPG = mean(City.MPG.FT1),
+            Highway.MPG = mean(Hwy.MPG.FT1)) %>%
+  filter(Highway.MPG < City.MPG, Fuel.Type1 != "Electricity") %>%
+  mutate(MPG_Diff = City.MPG - Highway.MPG ) %>%
+  filter(MPG_Diff > 1) %>%
+  arrange(desc(MPG_Diff)) 
+
+T1 <- TBL %>%
+  select(Model, City.MPG) %>%
+  mutate(City.Or.Highway = "City MPG") 
+
+T2 <- TBL %>%
+  select(Model, Highway.MPG) %>%
+  mutate(City.Or.Highway = "Highway MPG")
+
+names(T1)[6] <- "MPG"
+names(T2)[6] <- "MPG"
+ 
+rbind.data.frame(T1,T2) %>%
+    ggplot(aes(x=reorder(Model, MPG), y = MPG, fill = City.Or.Highway)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_text(aes(label = MPG) , size = 4, hjust = 1.2, position = position_dodge(0.9)) +
+    theme_classic() +
+    ggtitle("Vehicles that use the least gasoline in stop-n-go driving", subtitle = "Best City MPG") +
+    xlab("Vehicle Make & Model") +
+    ylab("Fuel Economy (MPG)") +
+    theme(plot.title = element_text(size = 13, face = "bold", hjust= 0)) + 
+    theme(axis.title = element_text(size = 13), axis.text = element_text(size = 11.5)) +
+    guides(fill = guide_legend(title = "Fuel Economy")) +
+    scale_fill_manual(values = c("maroon1", "seagreen1")) + 
+    coord_flip()
+    
+
+kable(TBL,
+      align = "l",
+      format = "html",
+      caption = "Best vehicles for City Driving")
+    
+
+#' 
+#' **Findings:**
+#' 
+#' 1. 11 Vehicles get better mileage in City than on highway.
+#' 2. "CHEVROLET Malibu" & "KIA Niro Touring" have difference of 6 MPG between City and highway mileage
+#' 3. "KIA Niro" & "TOYOTA Pirus c" have difference of 5 MPG between City and highway mileage
+#' 4. All the listed vehicles are SmartWay certified and have good GreenHouse Gas & Air Pollution score.
+#' 
+#' ### Which vehicle manufacturer got EPA rating for more than 10 vehicle models?
+#' 
+## ---- fig.width=8, fig.height=5------------------------------------------
+EPA.GV.Data %>%
+  separate(col = Model, into = c('Car.Brand', 'Car.Model'), sep = "\\ ", extra = "merge") %>%
+  distinct(Car.Brand, Car.Model) %>%
+  group_by(Car.Brand) %>%
+  summarise(Num.Of.CarModels = n()) %>%
+  filter(Num.Of.CarModels > 10) %>%
+  arrange(desc(Num.Of.CarModels))  %>%
+    ggplot(aes(x=reorder(Car.Brand, Num.Of.CarModels), y = Num.Of.CarModels, fill = Car.Brand)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_text(aes(label = Num.Of.CarModels) , size = 5, vjust = -0.1, position = position_dodge(0.9)) +
+    theme_classic() +
+    ggtitle("For 2018 model year: EPA rated 57 BMW Models") +
+    xlab("Vehicle Manufacturer") +
+    ylab("Number Of Car Models") +
+    theme(plot.title = element_text(size = 14, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 13), axis.text = element_text(size = 10)) +
+    theme(axis.text.x = element_text(angle = 35, hjust = 1, vjust = 1)) +
+    guides(fill=FALSE)
+  
+
+#' 
+#' **Findings:**
+#' 
+#' 1. In 2018, EPA rated more than 30 models for following manufacturers : BMW, MERCEDES-BENZ, PORSCHE, AUDI
+#' 2. IN 2018, EPA rated more than 10 models for following 14 manufacturers : BMW, MERCEDES-BENZ, PORSCHE, AUDI, TOYOTA, FORD, CHEVROLET, MINI, KIA, HYUNDAI, VOLVO, LEXUS, NISSAN, VOLKSWAGEN
+#' 
+#' ### Which Small Car is most Fuel-Efficient & Environment friendly?  
+#' 
+## ---- message=FALSE, warning=FALSE, fig.width=15, fig.height=9-----------
+#To Visualize the relationship between engine size, co2 emission and fuel economy
+SmallCar1 <-
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class == "small car", Fuel.Type1 != "Electricity" ) %>%
+  select(-Cert.Region, -Stnd, -Stnd.Description, -Num.Of.Gears, -Underhood.ID) %>%
+  group_by(Model,Displ,Cyl,Transmission.Type, SmartWay,Fuel.Type1,Veh.Class,Air.Pollution.Score,Greenhouse.Gas.Score ) %>%
+  summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0)) %>%
+    ggplot(aes(x=Displ, y = Combine.MPG)) +
+    geom_point() +
+    stat_smooth(method = lm, se=FALSE,color="dodgerblue3") +
+    theme_classic() +
+    theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.88)) + 
+    theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+    theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+    theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+    ggtitle("Larger the Engine, Lower the Mileage, Higher the CO2 Emissions") +
+    xlab("Engine Displacement (Size of Engine in Liters)") +
+    ylab("Combined Fuel Economy (MPG)")
+
+#To Visualize which transmission type is best
+SmallCar2 <- 
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class == "small car", Fuel.Type1 %in% c("Diesel","Gasoline") ) %>%
+  filter(Transmission.Type %in% c("Auto","Man","CVT")) %>%
+  select(-Cert.Region, -Stnd, -Stnd.Description, -Num.Of.Gears, -Underhood.ID) %>%
+  group_by(Model,Displ,Cyl,Transmission.Type, SmartWay,Fuel.Type1,Veh.Class,Air.Pollution.Score,Greenhouse.Gas.Score ) %>%
+  summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0)) %>%
+  group_by(Transmission.Type, Fuel.Type1 ) %>%
+  summarise(Avg_Combine.MPG = mean(Combine.MPG) ) %>%
+      ggplot(aes(x=reorder(Transmission.Type,Avg_Combine.MPG) , y=Avg_Combine.MPG , fill = Fuel.Type1)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      scale_y_continuous(limits=c(0, 40), breaks = seq(0, 40, 10)) +
+      theme_classic() +
+      theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.3)) + 
+      theme(plot.subtitle = element_text(size = 13)) +
+      theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+      theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+      theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+      scale_x_discrete(labels=c("Auto" = "Automatic", "Man" = "Manual", "CVT" = "CVT")) +
+      scale_x_discrete(labels=c("CVT"=expression(bold("CVT")), parse=TRUE)) +
+      theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+      geom_text(aes(label = round(Avg_Combine.MPG,0)) , size = 6, vjust = 1.0, position = position_dodge(0.9)) +
+      ggtitle("Gasoline Cars: CVT is the most Fuel-Efficient Transmission Type") +
+      xlab("Transmission Type") +
+      ylab("Avg Gas Mileage (MPG)") +
+      geom_rect(aes(xmin=0,xmax=2.5,ymin=0,ymax=40),alpha=0.1,fill="white") +
+      #geom_hline(yintercept = 30) + 
+      guides(fill = guide_legend(title = "Fuel Type")) +
+      scale_fill_manual(values = c("goldenrod1", "dodgerblue3"))
+
+#To Visualize the best car in the category      
+SmallCar3 <- 
+  rbind.data.frame(
+  (EPA.GV.Data %>%
+    filter(Veh.Class == "small car", Fuel.Type1 %in% c("Gasoline"),  SmartWay != "No") %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG > 40)),
+  (EPA.GV.Data %>%
+    filter(Veh.Class == "small car", Fuel.Type1 %in% c("Diesel"),  SmartWay != "No") %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG > 36,Trans == "Auto-9")) ) %>%
+      ggplot(aes(x= reorder(Model,desc(Combine.MPG)) ,y=Combine.MPG, fill=Fuel.Type1)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      theme_classic() +
+      geom_text(aes(label = round(Combine.MPG,0)) , size = 6, hjust = 1.2, position = position_dodge(0.9)) +
+      xlab("Vehicle Model & Make") +
+      ylab("Combined Fuel Economy (MPG)") +
+      scale_y_continuous(limits=c(0, 50), breaks = seq(0, 50, 10)) +
+      theme(plot.title = element_text(size = 15, face = "bold", hjust= 0)) + 
+      theme(plot.subtitle = element_text(size = 13)) +
+      theme(axis.title.y = element_blank()) +
+      theme(axis.title.x = element_text(size = 15),axis.text = element_text(size = 13)) +
+      theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+      guides(fill = guide_legend(title = "Fuel Type")) +
+      scale_fill_manual(values = c("goldenrod1", "dodgerblue3")) +
+      scale_x_discrete(labels=c("TOYOTA Prius c"=expression(bold("TOYOTA Prius c")), parse=TRUE)) +
+      ggtitle("TOYOTA Prius c: Best Fuel-Efficient Eco-Friendly Car") + 
+      coord_flip()
+
+grid.arrange(SmallCar1,SmallCar2,SmallCar3, nrow=2)
+
+#' 
+#' **Findings:**  
+#' 
+#' 1. TOYOTA Prius c is the most Fuel-Efficient & Environment friendly small car and have a mileage of more than 40 miles per gallon.  
+#' 2. Listed Gasoline Powered Cars are among the Best Environnmental Performers.  
+#' 
+#' ### Which Medium Size Car is most Fuel-Efficient & Environment friendly?
+#' 
+## ---- message=FALSE, warning=FALSE, fig.width=15, fig.height=9-----------
+#To Visualize the relationship between engine size, co2 emission and fuel economy
+MidsizeCar1 <-
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class == "midsize car", Fuel.Type1 != "Electricity" ) %>%
+  select(-Cert.Region, -Stnd, -Stnd.Description, -Num.Of.Gears, -Underhood.ID) %>%
+  group_by(Model,Displ,Cyl,Transmission.Type, SmartWay,Fuel.Type1,Veh.Class,Air.Pollution.Score,Greenhouse.Gas.Score ) %>%
+  summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0)) %>%
+    ggplot(aes(x=Displ, y = Combine.MPG)) +
+    geom_point() +
+    stat_smooth(method = lm, se=FALSE,color="dodgerblue3") +
+    theme_classic() +
+    theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.88)) + 
+    theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+    theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+    theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+    ggtitle("Larger the Engine, Lower the Mileage, Higher the CO2 Emissions") +
+    xlab("Engine Displacement (Size of Engine in Liters)") +
+    ylab("Combined Fuel Economy (MPG)")
+
+#To Visualize which transmission type is best
+MidsizeCar2 <- 
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class == "midsize car", Fuel.Type1 %in% c("Diesel","Gasoline") ) %>%
+  filter(!(Transmission.Type %in% c("AMS","Auto","SCV","SemiAuto"))) %>%
+  select(-Cert.Region, -Stnd, -Stnd.Description, -Num.Of.Gears, -Underhood.ID) %>%
+  group_by(Model,Displ,Cyl,Transmission.Type, SmartWay,Fuel.Type1,Veh.Class,Air.Pollution.Score,Greenhouse.Gas.Score ) %>%
+  summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0)) %>%
+  group_by(Transmission.Type, Fuel.Type1 ) %>%
+  summarise(Avg_Combine.MPG = mean(Combine.MPG) ) %>%
+      ggplot(aes(x=reorder(Transmission.Type,Avg_Combine.MPG) , y=Avg_Combine.MPG , fill = Fuel.Type1)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      scale_y_continuous(limits=c(0, 40), breaks = seq(0, 40, 10)) +
+      theme_classic() +
+      theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.78)) + 
+      theme(plot.subtitle = element_text(size = 13)) +
+      theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+      theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+      theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+      scale_x_discrete(labels=c("AutoMan" = expression(bold("Automated Manual")),
+                                "Man" = "Manual",
+                                "CVT" = expression(bold("CVT")))) +
+      theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+      geom_text(aes(label = round(Avg_Combine.MPG,0)) , size = 6, vjust = 1.0, position = position_dodge(0.9)) +
+      ggtitle("Gasoline Cars : Automated Manual & CVT are the most\nFuel-Efficient Transmission Type") +
+      xlab("Transmission Type") +
+      ylab("Avg Gas Mileage (MPG)") +
+      geom_rect(aes(xmin=0,xmax=1.5,ymin=0,ymax=40),alpha=0.1,fill="white") +
+      #geom_hline(yintercept = 30) + 
+      guides(fill = guide_legend(title = "Fuel Type")) +
+      scale_fill_manual(values = c("goldenrod1", "dodgerblue3"))
+
+#To Visualize the best car in the category
+MidsizeCar3 <- 
+rbind.data.frame(
+  (EPA.GV.Data %>%
+    filter(Veh.Class == "midsize car", Fuel.Type1 %in% c("Gasoline"),  SmartWay != "No") %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG > 45,Trans != "SCV-6")),
+  (EPA.GV.Data %>%
+    filter(Veh.Class == "midsize car", Fuel.Type1 %in% c("Diesel"),  SmartWay != "No") %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG >= 35, Trans != "Man-6")) ) %>%
+        ggplot(aes(x= reorder(Model,desc(Combine.MPG)) ,y=Combine.MPG, fill=Fuel.Type1)) +
+        geom_bar(stat = "identity", position = "dodge") +
+        theme_classic() +
+        geom_text(aes(label = round(Combine.MPG,0)) , size = 6, hjust = 1.2, position = position_dodge(0.9)) +
+        xlab("Vehicle Model & Make") +
+        ylab("Combined Fuel Economy (MPG)") +
+        scale_y_continuous(limits=c(0, 60), breaks = seq(0, 60, 10)) +
+        theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.7)) + 
+        theme(plot.subtitle = element_text(size = 13)) +
+        theme(axis.title.y = element_blank()) +
+        theme(axis.title.x = element_text(size = 15),axis.text = element_text(size = 13)) +
+        theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+        guides(fill = guide_legend(title = "Fuel Type")) +
+        scale_fill_manual(values = c("goldenrod1", "dodgerblue3")) +
+        scale_x_discrete(labels=c("HYUNDAI Ioniq Plug-in Hybrid"=expression(bold("HYUNDAI Ioniq Plug-in Hybrid")), parse=TRUE)) +
+        ggtitle("HYUNDAI Ioniq Plug-in Hybrid: Best Fuel-Efficient Eco-Friendly Car") +
+        coord_flip() 
+
+grid.arrange(MidsizeCar1,MidsizeCar2,MidsizeCar3, nrow=2)
+
+
+#' 
+#' **Findings:**  
+#' 
+#' 1. HYUNDAI Ioniq Plug-in Hybrid is the most Fuel-Efficient & Environment friendly midsize car and have a mileage of >50 miles per gallon. 
+#' 2. Listed Gasoline Powered Cars are among the Best Environnmental Performers. 
+#' 
+#' ### Which Large Car is most Fuel-Efficient & Environment friendly?
+#' 
+## ---- message=FALSE, warning=FALSE, fig.width=15, fig.height=9-----------
+#To Visualize the relationship between engine size, co2 emission and fuel economy
+LargeCar1 <-
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class == "large car", Fuel.Type1 != "Electricity" ) %>%
+  select(-Cert.Region, -Stnd, -Stnd.Description, -Num.Of.Gears, -Underhood.ID) %>%
+  group_by(Model,Displ,Cyl,Transmission.Type, SmartWay,Fuel.Type1,Veh.Class,Air.Pollution.Score,Greenhouse.Gas.Score ) %>%
+  summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0)) %>%
+    ggplot(aes(x=Displ, y = Combine.MPG)) +
+    geom_point() +
+    stat_smooth(method = lm, se=FALSE,color="dodgerblue3") +
+    theme_classic() +
+    theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.88)) + 
+    theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+    theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+    theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+    ggtitle("Larger the Engine, Lower the Mileage, Higher the CO2 Emissions") +
+    xlab("Engine Displacement (Size of Engine in Liters)") +
+    ylab("Combined Fuel Economy (MPG)")
+
+#To Visualize which transmission type is best
+LargeCar2 <- 
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class == "large car", Fuel.Type1 != "Electricity" ) %>%
+  filter(!(Transmission.Type %in% c("AMS","Auto","Man","SCV"))) %>%
+  select(-Cert.Region, -Stnd, -Stnd.Description, -Num.Of.Gears, -Underhood.ID) %>%
+  group_by(Model,Displ,Cyl,Transmission.Type, SmartWay,Fuel.Type1,Veh.Class,Air.Pollution.Score,Greenhouse.Gas.Score ) %>%
+  summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0)) %>%
+  group_by(Transmission.Type, Fuel.Type1 ) %>%
+  summarise(Avg_Combine.MPG = mean(Combine.MPG) ) %>%
+      ggplot(aes(x=reorder(Transmission.Type,Avg_Combine.MPG) , y=Avg_Combine.MPG , fill = Fuel.Type1)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      scale_y_continuous(limits=c(0, 40), breaks = seq(0, 40, 10)) +
+      theme_classic() +
+      theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.78)) + 
+      theme(plot.subtitle = element_text(size = 13)) +
+      theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+      theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+      theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+      scale_x_discrete(labels=c("AutoMan" = expression(bold("Automated Manual")),
+                                "SemiAuto" = "Semi Automatic",
+                                "CVT" = expression(bold("CVT")))) +
+      theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+      geom_text(aes(label = round(Avg_Combine.MPG,0)) , size = 6, vjust = 1.0, position = position_dodge(0.9)) +
+      ggtitle("Gasoline Car : Automated Manual & CVT are the most\n Fuel-Efficient Transmission Type") +
+      xlab("Transmission Type") +
+      ylab("Avg Gas Mileage (MPG)") +
+      geom_rect(aes(xmin=0,xmax=1.5,ymin=0,ymax=40),alpha=0.1,fill="white") +
+      #geom_hline(yintercept = 28) + 
+      guides(fill = guide_legend(title = "Fuel Type")) +
+      scale_fill_manual(values = c("coral1", "dodgerblue3"))  
+
+#To Visualize the best car in the category
+LargeCar3 <- 
+rbind.data.frame(
+  (EPA.GV.Data %>%
+    filter(Veh.Class == "large car", Fuel.Type1 %in% c("Gasoline"),  SmartWay != "No") %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG > 35 )),
+  (EPA.GV.Data %>%
+    filter(Veh.Class == "large car", Fuel.Type1 %in% c("Ethanol")) %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(max(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG > 16)) ) %>%
+        ggplot(aes(x= reorder(Model,desc(Combine.MPG)) ,y=Combine.MPG, fill=Fuel.Type1)) +
+        geom_bar(stat = "identity", position = "dodge") +
+        theme_classic() +
+        geom_text(aes(label = round(Combine.MPG,0)) , size = 6, hjust = 1.2, position = position_dodge(0.9)) +
+        xlab("Vehicle Model & Make") +
+        ylab("Combined Fuel Economy (MPG)") +
+        scale_y_continuous(limits=c(0, 60), breaks = seq(0, 60, 10)) +
+        theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.5)) + 
+        theme(plot.subtitle = element_text(size = 13)) +
+        theme(axis.title.y = element_blank()) +
+        theme(axis.title.x = element_text(size = 15),axis.text = element_text(size = 13)) +
+        theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+        guides(fill = guide_legend(title = "Fuel Type")) +
+        scale_fill_manual(values = c("coral1", "dodgerblue3")) +
+        scale_x_discrete(labels=c("HYUNDAI Ioniq Blue"=expression(bold("HYUNDAI Ioniq Blue")), parse=TRUE)) +
+        ggtitle("HYUNDAI Ioniq Blue: Best Fuel-Efficient Eco-Friendly Car") +
+        coord_flip() 
+
+grid.arrange(LargeCar1,LargeCar2,LargeCar3, nrow=2)
+
+
+#' 
+#' **Findings:**  
+#' 
+#' 1. HYUNDAI Ioniq Blue is the most Fuel-Efficient & Environment friendly large car and have a mileage of >50 miles per gallon. 
+#' 2. Listed Gasoline Powered Cars are among the Best Environnmental Performers. 
+#' 
+#' ### Which Station Wagon is most Fuel-Efficient & Environment friendly?  
+#' 
+## ---- message=FALSE, warning=FALSE, fig.width=15, fig.height=9-----------
+#To Visualize the relationship between engine size, co2 emission and fuel economy
+StationWagon1 <-
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class == "station wagon", Fuel.Type1 != "Electricity" ) %>%
+  select(-Cert.Region, -Stnd, -Stnd.Description, -Num.Of.Gears, -Underhood.ID) %>%
+  group_by(Model,Displ,Cyl,Transmission.Type, SmartWay,Fuel.Type1,Veh.Class,Air.Pollution.Score,Greenhouse.Gas.Score ) %>%
+  summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0)) %>%
+    ggplot(aes(x=Displ, y = Combine.MPG)) +
+    geom_point() +
+    stat_smooth(method = lm, se=FALSE,color="dodgerblue3") +
+    theme_classic() +
+    theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.88)) + 
+    theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+    theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+    theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+    ggtitle("Larger the Engine, Lower the Mileage, Higher the CO2 Emissions") +
+    xlab("Engine Displacement (Size of Engine in Liters)") +
+    ylab("Combined Fuel Economy (MPG)")
+
+#To Visualize which transmission type is best
+StationWagon2 <- 
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class == "station wagon", Fuel.Type1 %in% c("Diesel","Gasoline") ) %>%
+  filter(!(Transmission.Type %in% c("AMS","Auto","Man","SCV"))) %>%
+  select(-Cert.Region, -Stnd, -Stnd.Description, -Num.Of.Gears, -Underhood.ID) %>%
+  group_by(Model,Displ,Cyl,Transmission.Type, SmartWay,Fuel.Type1,Veh.Class,Air.Pollution.Score,Greenhouse.Gas.Score ) %>%
+  summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0)) %>%
+  group_by(Transmission.Type, Fuel.Type1 ) %>%
+  summarise(Avg_Combine.MPG = mean(Combine.MPG) ) %>%
+      ggplot(aes(x=reorder(Transmission.Type,Avg_Combine.MPG) , y=Avg_Combine.MPG , fill = Fuel.Type1)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      scale_y_continuous(limits=c(0, 40), breaks = seq(0, 40, 10)) +
+      theme_classic() +
+      theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.0)) + 
+      theme(plot.subtitle = element_text(size = 13)) +
+      theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+      theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+      theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+      scale_x_discrete(labels=c("AutoMan" = expression(bold("Automated Manual")),
+                                "SemiAuto" = "Semi Automatic",
+                                "CVT" = "CVT")) +
+      theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+      geom_text(aes(label = round(Avg_Combine.MPG,0)) , size = 6, vjust = 1.0, position = position_dodge(0.9)) +
+      ggtitle("Gasoline Car : Automated Manual is the most\n Fuel-Efficient Transmission Type") +
+      xlab("Transmission Type") +
+      ylab("Avg Gas Mileage (MPG)") +
+      geom_rect(aes(xmin=0,xmax=2.5,ymin=0,ymax=40),alpha=0.1,fill="white") +
+      #geom_hline(yintercept = 28) + 
+      guides(fill = guide_legend(title = "Fuel Type")) +
+      scale_fill_manual(values = c("goldenrod1", "dodgerblue3"))
+
+#To Visualize the best car in the category
+StationWagon3 <- 
+rbind.data.frame(
+  (EPA.GV.Data %>%
+    filter(Veh.Class == "station wagon", Fuel.Type1 %in% c("Gasoline"),  SmartWay != "No") %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG > 35)),
+  (EPA.GV.Data %>%
+    filter(Veh.Class == "station wagon", Fuel.Type1 %in% c("Diesel")) %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG >= 34)) ) %>%
+        ggplot(aes(x= reorder(Model,desc(Combine.MPG)) ,y=Combine.MPG, fill=Fuel.Type1)) +
+        geom_bar(stat = "identity", position = "dodge") +
+        theme_classic() +
+        geom_text(aes(label = round(Combine.MPG,0)) , size = 6, hjust = 1.2, position = position_dodge(0.9)) +
+        xlab("Vehicle Model & Make") +
+        ylab("Combined Fuel Economy (MPG)") +
+        scale_y_continuous(limits=c(0, 60), breaks = seq(0, 60, 10)) +
+        theme(plot.title = element_text(size = 15, face = "bold", hjust= 0)) + 
+        theme(plot.subtitle = element_text(size = 13)) +
+        theme(axis.title.y = element_blank()) +
+        theme(axis.title.x = element_text(size = 15),axis.text = element_text(size = 13)) +
+        theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+        guides(fill = guide_legend(title = "Fuel Type")) +
+        scale_fill_manual(values = c("goldenrod1", "dodgerblue3")) +
+        scale_x_discrete(labels=c("KIA Niro FE"=expression(bold("KIA Niro FE")), parse=TRUE)) +
+        ggtitle("KIA Niro FE: Best Fuel-Efficient Eco-Friendly Car") + 
+        coord_flip() 
+
+grid.arrange(StationWagon1,StationWagon2,StationWagon3, nrow=2)
+
+
+#' 
+#' **Findings:**  
+#' 
+#' 1. HYUNDAI Ioniq Blue is the most Fuel-Efficient & Environment friendly station wagon and have a mileage of >50 miles per gallon. 
+#' 2. Listed Gasoline Powered Cars are among the Best Environnmental Performers.
+#' 
+#' ### Which is better a Diesel or Gasoline Engine?
+#' 
+## ---- message=FALSE, warning=FALSE,fig.width=13, fig.height=5------------
+
+#To Visualize whether Diesel is more efficient or Gasoline 
+FF1<-
+EPA.GV.Data %>%
+  filter(Fuel.Type1 != "Electricity") %>%
+  filter(Veh.Class %in% c("small car", "midsize car", "large car", "station wagon")) %>%
+  group_by(Fuel.Type1) %>%
+  summarise(FuelEconomy = mean(Cmb.MPG.FT1)) %>%
+    ggplot(aes(x=Fuel.Type1, y=FuelEconomy, fill = Fuel.Type1)) +
+    geom_bar(stat = "identity", position = "dodge") + 
+    theme_classic() + 
+    ggtitle("Diesel Cars operate more efficiently than Gasoline Cars") +
+    xlab("Fuel Type") +
+    ylab("Gas Mileage (Miles/Gallon)") +
+    guides(fill=FALSE)  +
+    theme(plot.title = element_text(size = 13, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 12), axis.text = element_text(size = 11)) +
+    scale_fill_manual(values = c("goldenrod1","coral1", "dodgerblue3"))
+
+#To Visualize whether Disel Cars have more impact on Environment or Gasoline
+FF2<-
+EPA.GV.Data %>%
+  filter(Fuel.Type1 != "Electricity") %>%
+  filter(Veh.Class %in% c("small car", "midsize car", "large car", "station wagon")) %>%
+  group_by(Fuel.Type1) %>%
+  summarise(AirPollutionScore = mean(Air.Pollution.Score)) %>%
+    ggplot(aes(x=Fuel.Type1, y=AirPollutionScore, fill = Fuel.Type1)) +
+    geom_bar(stat = "identity", position = "dodge") + 
+    theme_classic() + 
+    ggtitle("Gasoline Cars are better than Disel Cars for Environment") +
+    xlab("Fuel Type") +
+    ylab("Air Pollution Score") +
+    theme(legend.position = c(0.14,0.80)) + 
+    theme(plot.title = element_text(size = 13, face = "bold", hjust= 0.5)) + 
+    theme(axis.title = element_text(size = 12), axis.text = element_text(size = 11)) +
+    scale_fill_manual(values = c("goldenrod1","coral1", "dodgerblue3")) +
+    guides(fill = guide_legend(title = "Fuel Type"))
+
+
+grid.arrange(FF1,FF2, nrow=1)
+
+
+#' 
+#' **Findings:**
+#' 
+#' 1. Diesel Cars operate more efficiently than Gasoline Cars. 
+#' 2. Gasoline Cars have less negative impact on Environment in comparision with Diesel Cars. 
+#' 
+#' ### What is the affect of Fuel & Transmission Type on Fuel-Economy/Gas-Mileage?
+#' 
+## ---- message=FALSE, warning=FALSE---------------------------------------
+#To Visualize the affect of transmission type on fuel economy
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class %in% c("small car", "midsize car", "large car", "station wagon")) %>%
+  filter(Fuel.Type1 %in% c("Gasoline","Diesel"), !(Transmission.Type %in% c("SCV","AMS")) ) %>%
+  transform(newcol=paste(Fuel.Type1, Transmission.Type, sep="--")) %>%
+  group_by(newcol) %>%
+  summarise(FuelEconomy = mean(Cmb.MPG.FT1)) %>%
+    ggplot(aes(x=reorder(newcol,FuelEconomy), y=FuelEconomy, fill = newcol )) +
+    geom_bar(stat = "identity", position = "dodge") + 
+    theme_classic() + 
+    ggtitle("On Average which is the most Fuel-Efficient Environment Friendly Blend?",
+            subtitle = "Gasoline with Continuously Variable Transmission(CVT) Type") +
+    xlab("Fuel & Transmission Type") +
+    ylab("Average Gas Mileage (Miles/Gallon)") +
+    guides(fill=FALSE) +
+    geom_text(aes(label = round(FuelEconomy,0)) , size = 5, hjust = 1.2, position = position_dodge(0.9), color = "white") +
+    theme(plot.title = element_text(size = 13, face = "bold", hjust= 1)) + 
+    theme(plot.subtitle = element_text(size = 11, hjust= 0.5)) +
+    theme(axis.title = element_text(size = 12), axis.text = element_text(size = 11)) +
+    scale_fill_manual(values = c("cyan3", "darkcyan", "lightgrey", "lightgrey",
+                                 "lightgrey", "navy", "lightgrey", "lightgrey")) +
+    coord_flip()
+
+
+#' 
+#' **Findings:**
+#' 
+#' 1. Gasoline powered cars with Continuously Variable Transmission(CVT) Type have highest fuel efficiency.  
+#' 2. For Diesel cars manual transmission would be more fuel-efficient than automatic or semi-automatic transmission. 
+#' 
+#' ### Which is the most fuel-efficient car within each vehicle class? And what are their characteristics?
+#' 
+## ---- echo=FALSE, message=FALSE, warning=FALSE, fig.width=10.5,fig.height=4,out.extra='angle=90'----
+FData <-
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class %in% c("small car", "midsize car", "large car", "station wagon"), Fuel.Type1 %in% c("Gasoline", "Diesel")) %>%
+  select(Model,Displ,Transmission.Type,Fuel.Type1,Veh.Class,Air.Pollution.Score,
+         Greenhouse.Gas.Score,SmartWay,Comb.CO2.FT1,Cmb.MPG.FT1) %>%
+  group_by(Model,Displ,Transmission.Type,Fuel.Type1,Veh.Class,SmartWay) %>%
+  summarise(FuelEconomy = round(mean(Cmb.MPG.FT1),0),
+            CO2Emission = round(mean(Comb.CO2.FT1),0),
+            Greenhouse.Gas.Score = round(mean(Greenhouse.Gas.Score),0),
+            Air.Pollution.Score = round(mean(Air.Pollution.Score),0)) %>%
+  filter(SmartWay != "No" , Displ <= 2)
+
+C1<- FData %>%
+  filter(Veh.Class == "small car", FuelEconomy >38) %>%
+  filter(!(Model == "CHEVROLET Volt" & SmartWay == "Yes")) %>%
+  ggplot(aes(x=reorder(Model,(FuelEconomy)),y=FuelEconomy, fill= Model)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = FuelEconomy) , size = 5, hjust = 1.2, position = position_dodge(0.9),color = "white") +
+  ggtitle("Best Small Green Car: TOYOTA Prius c") +
+  xlab("") + theme_classic() +
+  ylab("City/Hwy Gas Mileage (MPG)") +
+  theme(plot.title = element_text(size = 12, face = "bold", hjust= 0.0)) + 
+  theme(axis.title = element_text(size = 13), axis.text = element_text(size = 10)) +
+  #theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)) +
+  guides(fill=FALSE) +
+  scale_fill_manual(values = c("lightgrey", "lightgrey", "navy")) +
+  scale_x_discrete(labels=c("TOYOTA Prius c"=expression(bold("TOYOTA Prius c")), parse=TRUE)) +
+  coord_flip()
+
+C2<- FData %>%
+  filter(Veh.Class == "midsize car", FuelEconomy >40) %>%
+  filter(!(Model == "FORD Fusion Energi Plug-in Hybrid" )) %>%
+  ggplot(aes(x=reorder(Model,(FuelEconomy)),y=FuelEconomy, fill= Model))  +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = FuelEconomy) , size = 5, hjust = 1.2, position = position_dodge(0.5),color ="white") +
+  ggtitle("Best Midsize Green Car:\n HYUNDAI Ioniq Plug-in Hybrid") +
+  xlab("") + theme_classic() +
+  ylab("City/Hwy Gas Mileage (MPG)") +
+  theme(plot.title = element_text(size = 12, face = "bold", hjust= 0.0)) + 
+  theme(axis.title = element_text(size = 13), axis.text = element_text(size = 10)) +
+  #theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
+  guides(fill=FALSE) +
+  scale_fill_manual(values = c("lightgrey", "lightgrey", "navy")) +
+  scale_x_discrete(labels=c("HYUNDAI Ioniq Plug-in Hybrid"=expression(bold("HYUNDAI Ioniq Plug-in Hybrid")), parse=TRUE)) +
+  coord_flip()
+
+C3<-FData %>%
+  filter(Veh.Class == "large car", FuelEconomy >= 40) %>%
+  ggplot(aes(x=reorder(Model,(FuelEconomy)),y=FuelEconomy, fill= Model)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = FuelEconomy) , size = 5, hjust = 1.2, position = position_dodge(0.9), color = "white") +
+  ggtitle("Best Large Green Car: HYUNDAI Ioniq Blue") +
+  xlab("") + theme_classic() +
+  ylab("City/Hwy Gas Mileage (MPG)") +
+  theme(plot.title = element_text(size = 12, face = "bold", hjust= 0.2)) + 
+  theme(axis.title = element_text(size = 13), axis.text = element_text(size = 10)) +
+  #theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
+  guides(fill=FALSE) +
+  scale_fill_manual(values = c("lightgrey", "lightgrey", "navy")) +
+  scale_x_discrete(labels=c("HYUNDAI Ioniq Blue"=expression(bold("HYUNDAI Ioniq Blue")), parse=TRUE)) +
+  coord_flip()
+
+C4<-FData %>%
+  filter(Veh.Class == "station wagon", FuelEconomy >= 40) %>%
+  ggplot(aes(x=reorder(Model,(FuelEconomy)),y=FuelEconomy, fill= Model)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = FuelEconomy) , size = 5, hjust = 1.2, position = position_dodge(0.9), color ="white") +
+  ggtitle("Best Green Station Wagon: KIA Niro FE") +
+  xlab("") + theme_classic() +
+  ylab("City/Hwy Gas Mileage (MPG)") +
+  theme(plot.title = element_text(size = 12, face = "bold", hjust= 0.0)) + 
+  theme(axis.title = element_text(size = 13), axis.text = element_text(size = 10)) +
+  #theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
+  guides(fill=FALSE) +
+  scale_fill_manual(values = c("lightgrey", "navy", "lightgrey")) +
+  scale_x_discrete(labels=c("KIA Niro FE"=expression(bold("KIA Niro FE")), parse=TRUE)) +
+  coord_flip()
+
+grid.arrange(C1,C2,C3,C4, nrow=2)
+
+Best_Car<-
+rbind.data.frame(
+(FData %>%
+  filter(Veh.Class == "small car", FuelEconomy >38) %>%
+  filter(!(Model == "CHEVROLET Volt" & SmartWay == "Yes"))) ,
+
+(FData %>%
+  filter(Veh.Class == "midsize car", FuelEconomy >40) %>%
+  filter(!(Model == "FORD Fusion Energi Plug-in Hybrid" ))) ,   
+
+(FData %>%
+  filter(Veh.Class == "large car", FuelEconomy >= 40)),
+
+(FData %>%
+  filter(Veh.Class == "station wagon", FuelEconomy >= 40)))
+
+kable(Best_Car,
+      align = "l")
+
+
+#' 
+#' 
+#' 
