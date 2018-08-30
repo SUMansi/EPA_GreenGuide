@@ -33,7 +33,6 @@ The Size of the Engine (i.e. Engine's Capacity/Displacement) has a huge impact o
 *Figure 1: Relationship between Engine Size, Gas Mileage and CO2 Emission*
 
 ![alt text]( https://github.com/SUMansi/EPA_GreenGuide/blob/master/Fig1.png)
-<img src="StoryTellingDocument_files/figure-markdown_github/unnamed-chunk-5-1.png" angle=90 style="display: block; margin: auto;" />
 
 Engine Capacity determines the amount of fuel the engine burns. The larger the engine capacity, more likely it is to burn more fuel as it produces more power. Hence, the more fuel it uses per mile, the more CO2 it emits. Therefore, for maximum fuel efficiency, select a vehicle with engine capacity of less than or equal to 2 Liters.
 
@@ -58,7 +57,7 @@ In terms of best fuel , the choice between diesel and gasoline doesn't seem to b
 
 *Figure 2: Relationship between "Fuel & Transmission Type" and "Gas-Mileage"*
 
-<img src="StoryTellingDocument_files/figure-markdown_github/unnamed-chunk-7-1.png" angle=90 style="display: block; margin: auto;" />
+![alt text]( https://github.com/SUMansi/EPA_GreenGuide/blob/master/Fig2.png)
 
 CVT & Automated Manual transmission type provides more gas mileage than any other transmission type for gasoline cars. However, for diesel cars manual transmission would be more fuel-efficient than automatic or semi-automatic transmission.Now as we know diesel cars cause more pollution than gasoline cars, therefore, prefer gasoline cars with Continuously Variable transmission(CVT) or Automated Manual transmission to achieve high fuel efficiency and to conserve environment .
 
@@ -68,7 +67,7 @@ CVT & Automated Manual transmission type provides more gas mileage than any othe
 
 *Figure 3: Best Fuel Efficient Eco-Friendly Car*
 
-<img src="StoryTellingDocument_files/figure-markdown_github/unnamed-chunk-8-1.png" angle=90 />
+![alt text]( https://github.com/SUMansi/EPA_GreenGuide/blob/master/Fig2.png)
 
 All the above listed cars are among the best environnmental performers and are powered by gasoline and have an engine capacity of less than or equal to 2 Liters.
 
