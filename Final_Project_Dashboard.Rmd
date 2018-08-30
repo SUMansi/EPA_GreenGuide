@@ -1,0 +1,519 @@
+---
+title: "What are the factors that affect Mileage and which is the most Fuel Efficient Eco-Friendly Car?"  
+author: 'From: Mansi Agarwal'
+date: '`r format(Sys.time(), "%B %d, %Y")`'
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+runtime: shiny
+--- 
+
+```{r echo= FALSE}
+# Course: BUAN 5210
+# Title: Final Project Technical Appendix 
+# Purpose: Analyse "Environmental Protection Agency"" Green Vehicle data to determine which vehicle is more efficient and less polluting
+```
+
+
+```{r setup, include=FALSE}
+# Clear working directory (remove all objects)
+rm(list=ls(all=TRUE)) 
+
+# Loading Packages
+library(shiny)
+library(flexdashboard)
+library(tidyverse)
+
+# Import EPA Green Vehicle Data 
+EPA.GV.Data <- read.csv("EPA_Green_Vehicle.csv", header = TRUE)
+
+ScatterPlotData <-
+        EPA.GV.Data %>%
+          filter(Fuel.Type1 != "Electricity" ) %>%
+          group_by(Model,Displ, Cyl, Trans,SmartWay,Fuel.Type1,Air.Pollution.Score,Greenhouse.Gas.Score,Veh.Class) %>%
+          summarise(CO2_Emissions = round(mean(Comb.CO2.FT1),0),
+                    Gas_Mileage = round(mean(Cmb.MPG.FT1),0)) 
+                    
+          #rename(c("Displ" = "Engine_Displacement")) 
+          #rename(c("Cyl" = "Number.of.Cylinders"))
+
+X.Data <- ScatterPlotData[,c(2,11)]
+Y.Data <- ScatterPlotData[,10:11]
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+SmallCar2 <- 
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class == "small car", Fuel.Type1 %in% c("Diesel","Gasoline") ) %>%
+  filter(Transmission.Type %in% c("Auto","Man","CVT")) %>%
+  select(-Cert.Region, -Stnd, -Stnd.Description, -Num.Of.Gears, -Underhood.ID) %>%
+  group_by(Model,Displ,Cyl,Transmission.Type, SmartWay,Fuel.Type1,Veh.Class,Air.Pollution.Score,Greenhouse.Gas.Score ) %>%
+  summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0)) %>%
+  group_by(Transmission.Type, Fuel.Type1 ) %>%
+  summarise(Avg_Combine.MPG = mean(Combine.MPG) ) %>%
+      ggplot(aes(x=reorder(Transmission.Type,Avg_Combine.MPG) , y=Avg_Combine.MPG , fill = Fuel.Type1)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      scale_y_continuous(limits=c(0, 40), breaks = seq(0, 40, 10)) +
+      theme_classic() +
+      theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.3)) + 
+      theme(plot.subtitle = element_text(size = 13)) +
+      theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+      theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+      theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+      scale_x_discrete(labels=c("Auto" = "Automatic", "Man" = "Manual", "CVT" = "CVT")) +
+      scale_x_discrete(labels=c("CVT"=expression(bold("CVT")), parse=TRUE)) +
+      theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+      geom_text(aes(label = round(Avg_Combine.MPG,0)) , size = 6, vjust = 1.0, position = position_dodge(0.9)) +
+      ggtitle("Gasoline Cars: CVT is the most Fuel-Efficient Transmission Type") +
+      xlab("Transmission Type") +
+      ylab("Avg Gas Mileage (MPG)") +
+      geom_rect(aes(xmin=0,xmax=2.5,ymin=0,ymax=40),alpha=0.1,fill="white") +
+      #geom_hline(yintercept = 30) + 
+      guides(fill = guide_legend(title = "Fuel Type")) +
+      scale_fill_manual(values = c("goldenrod1", "dodgerblue3")) +
+      labs(caption = "Diesel is more Fuel-Efficient than Gasoline, but have (-)ve impact on Environment") +
+      theme (plot.caption=element_text(hjust=0.5, vjust=-1, size = 13,
+                                          margin=margin(t=12,0,0,0)))
+
+MidsizeCar2 <- 
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class == "midsize car", Fuel.Type1 %in% c("Diesel","Gasoline") ) %>%
+  filter(!(Transmission.Type %in% c("AMS","Auto","SCV","SemiAuto"))) %>%
+  select(-Cert.Region, -Stnd, -Stnd.Description, -Num.Of.Gears, -Underhood.ID) %>%
+  group_by(Model,Displ,Cyl,Transmission.Type, SmartWay,Fuel.Type1,Veh.Class,Air.Pollution.Score,Greenhouse.Gas.Score ) %>%
+  summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0)) %>%
+  group_by(Transmission.Type, Fuel.Type1 ) %>%
+  summarise(Avg_Combine.MPG = mean(Combine.MPG) ) %>%
+      ggplot(aes(x=reorder(Transmission.Type,Avg_Combine.MPG) , y=Avg_Combine.MPG , fill = Fuel.Type1)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      scale_y_continuous(limits=c(0, 40), breaks = seq(0, 40, 10)) +
+      theme_classic() +
+      theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.78)) + 
+      theme(plot.subtitle = element_text(size = 13)) +
+      theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+      theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+      theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+      scale_x_discrete(labels=c("AutoMan" = expression(bold("Automated Manual")),
+                                "Man" = "Manual",
+                                "CVT" = expression(bold("CVT")))) +
+      theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+      geom_text(aes(label = round(Avg_Combine.MPG,0)) , size = 6, vjust = 1.0, position = position_dodge(0.9)) +
+      ggtitle("Gasoline Cars : Automated Manual & CVT are the most\nFuel-Efficient Transmission Type") +
+      xlab("Transmission Type") +
+      ylab("Avg Gas Mileage (MPG)") +
+      geom_rect(aes(xmin=0,xmax=1.5,ymin=0,ymax=40),alpha=0.1,fill="white") +
+      #geom_hline(yintercept = 30) + 
+      guides(fill = guide_legend(title = "Fuel Type")) +
+      scale_fill_manual(values = c("goldenrod1", "dodgerblue3"))  +
+      labs(caption = "Diesel is more Fuel-Efficient than Gasoline, but have (-)ve impact on Environment") +
+      theme (plot.caption=element_text(hjust=0.5, vjust=-1, size = 13,
+                                          margin=margin(t=12,0,0,0)))
+
+LargeCar2 <- 
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class == "large car", Fuel.Type1 != "Electricity" ) %>%
+  filter(!(Transmission.Type %in% c("AMS","Auto","Man","SCV"))) %>%
+  select(-Cert.Region, -Stnd, -Stnd.Description, -Num.Of.Gears, -Underhood.ID) %>%
+  group_by(Model,Displ,Cyl,Transmission.Type, SmartWay,Fuel.Type1,Veh.Class,Air.Pollution.Score,Greenhouse.Gas.Score ) %>%
+  summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0)) %>%
+  group_by(Transmission.Type, Fuel.Type1 ) %>%
+  summarise(Avg_Combine.MPG = mean(Combine.MPG) ) %>%
+      ggplot(aes(x=reorder(Transmission.Type,Avg_Combine.MPG) , y=Avg_Combine.MPG , fill = Fuel.Type1)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      scale_y_continuous(limits=c(0, 40), breaks = seq(0, 40, 10)) +
+      theme_classic() +
+      theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.78)) + 
+      theme(plot.subtitle = element_text(size = 13)) +
+      theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+      theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+      theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+      scale_x_discrete(labels=c("AutoMan" = expression(bold("Automated Manual")),
+                                "SemiAuto" = "Semi Automatic",
+                                "CVT" = expression(bold("CVT")))) +
+      theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+      geom_text(aes(label = round(Avg_Combine.MPG,0)) , size = 6, vjust = 1.0, position = position_dodge(0.9)) +
+      ggtitle("Gasoline Car : Automated Manual & CVT are the most\n Fuel-Efficient Transmission Type") +
+      xlab("Transmission Type") +
+      ylab("Avg Gas Mileage (MPG)") +
+      geom_rect(aes(xmin=0,xmax=1.5,ymin=0,ymax=40),alpha=0.1,fill="white") +
+      #geom_hline(yintercept = 28) + 
+      guides(fill = guide_legend(title = "Fuel Type")) +
+      scale_fill_manual(values = c("coral1", "dodgerblue3")) 
+
+StationWagon2 <- 
+EPA.GV.Data %>%
+  separate(col = Trans, into = c('Transmission.Type', 'Num.Of.Gears'), sep = "\\-") %>%
+  filter(Veh.Class == "station wagon", Fuel.Type1 %in% c("Diesel","Gasoline") ) %>%
+  filter(!(Transmission.Type %in% c("AMS","Auto","Man","SCV"))) %>%
+  select(-Cert.Region, -Stnd, -Stnd.Description, -Num.Of.Gears, -Underhood.ID) %>%
+  group_by(Model,Displ,Cyl,Transmission.Type, SmartWay,Fuel.Type1,Veh.Class,Air.Pollution.Score,Greenhouse.Gas.Score ) %>%
+  summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0)) %>%
+  group_by(Transmission.Type, Fuel.Type1 ) %>%
+  summarise(Avg_Combine.MPG = mean(Combine.MPG) ) %>%
+      ggplot(aes(x=reorder(Transmission.Type,Avg_Combine.MPG) , y=Avg_Combine.MPG , fill = Fuel.Type1)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      scale_y_continuous(limits=c(0, 40), breaks = seq(0, 40, 10)) +
+      theme_classic() +
+      theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.0)) + 
+      theme(plot.subtitle = element_text(size = 13)) +
+      theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+      theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+      theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+      scale_x_discrete(labels=c("AutoMan" = expression(bold("Automated Manual")),
+                                "SemiAuto" = "Semi Automatic",
+                                "CVT" = "CVT")) +
+      theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+      geom_text(aes(label = round(Avg_Combine.MPG,0)) , size = 6, vjust = 1.0, position = position_dodge(0.9)) +
+      ggtitle("Gasoline Car : Automated Manual is the most\n Fuel-Efficient Transmission Type") +
+      xlab("Transmission Type") +
+      ylab("Avg Gas Mileage (MPG)") +
+      geom_rect(aes(xmin=0,xmax=2.5,ymin=0,ymax=40),alpha=0.1,fill="white") +
+      #geom_hline(yintercept = 28) + 
+      guides(fill = guide_legend(title = "Fuel Type")) +
+      scale_fill_manual(values = c("goldenrod1", "dodgerblue3")) +
+      labs(caption = "Diesel is more Fuel-Efficient than Gasoline, but have (-)ve impact on Environment") +
+      theme (plot.caption=element_text(hjust=0.5, vjust=-1, size = 13,
+                                          margin=margin(t=12,0,0,0)))
+
+```
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+```{r}
+#Vary by Vehicle Segment
+radioButtons("VS", "Vehicle Segment", c("Small Cars", "Midsize Cars", "Large Cars", "Station Wagon"),
+             selected = "Small Cars")  
+
+# Select x axis variable      
+selectInput('x', 'X Axis', names(X.Data)[[1]], choices = list("Engine_Size"="Displ","Gas_Mileage"="Gas_Mileage"))
+
+# Select y axis variable      
+selectInput('y', 'Y Axis', names(Y.Data), names(Y.Data)[[2]])
+
+#Differentiate by Fuel Type
+checkboxGroupInput("FT", "Fuel Type", choices = c("Diesel", "Gasoline","Ethanol"),
+                   selected = "Gasoline")
+```
+
+Rows {data-height=550, align='center'}
+-----------------------------------------------------------------------
+
+### **Reduce CO2 Emissions by Choosing a Car with High Gas Mileage**
+
+```{r}
+renderPlot({
+
+SmallCar1 <-
+ScatterPlotData %>%
+    filter(Veh.Class == "small car") %>%
+    ggplot(aes_string(input$x, input$y)) +
+    geom_point() +
+    stat_smooth(method = lm, se=FALSE,color="dodgerblue3") +
+    theme_classic() +
+    theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.88)) + 
+    theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+    theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+    theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+    ggtitle("Larger the Engine, Lower the Mileage, Higher the CO2 Emissions") +
+    xlab(switch(input$x,
+        "Displ" = "Size of Engine (in Liters)",
+        "Gas_Mileage"  = "Gas Mileage (Miles / Gallon)")) +
+    ylab(switch(input$y,
+        "Gas_Mileage"  = "Gas Mileage (Miles / Gallon)",
+        "CO2_Emissions" = "CO2 Emissions (Grams / Mile)" )) 
+
+MidsizeCar1 <-
+ScatterPlotData %>%
+    filter(Veh.Class == "midsize car") %>%
+    ggplot(aes_string(input$x, input$y)) +
+    geom_point() +
+    stat_smooth(method = lm, se=FALSE,color="dodgerblue3") +
+    theme_classic() +
+    theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.88)) + 
+    theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+    theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+    theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+    ggtitle("Larger the Engine, Lower the Mileage, Higher the CO2 Emissions") +
+    xlab(switch(input$x,
+        "Displ" = "Size of Engine (in Liters)",
+        "Gas_Mileage"  = "Gas Mileage (Miles / Gallon)")) +
+    ylab(switch(input$y,
+        "Gas_Mileage"  = "Gas Mileage (Miles / Gallon)",
+        "CO2_Emissions" = "CO2 Emissions (Grams / Mile)" )) 
+
+LargeCar1 <-
+ScatterPlotData %>%
+    filter(Veh.Class == "large car") %>%
+    ggplot(aes_string(input$x, input$y)) +
+    geom_point() +
+    stat_smooth(method = lm, se=FALSE,color="dodgerblue3") +
+    theme_classic() +
+    theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.88)) + 
+    theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+    theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+    theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+    ggtitle("Larger the Engine, Lower the Mileage, Higher the CO2 Emissions") +
+    xlab(switch(input$x,
+        "Displ" = "Size of Engine (in Liters)",
+        "Gas_Mileage"  = "Gas Mileage (Miles / Gallon)")) +
+    ylab(switch(input$y,
+        "Gas_Mileage"  = "Gas Mileage (Miles / Gallon)",
+        "CO2_Emissions" = "CO2 Emissions (Grams / Mile)" ))  
+
+StationWagon1 <-
+ScatterPlotData %>%
+    filter(Veh.Class == "station wagon") %>%
+    ggplot(aes_string(input$x, input$y)) +
+    geom_point() +
+    stat_smooth(method = lm, se=FALSE,color="dodgerblue3") +
+    theme_classic() +
+    theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.88)) + 
+    theme(axis.title = element_text(size = 15), axis.text = element_text(size = 13)) +
+    theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
+    theme(axis.title.x = element_text(margin = margin(t = 12, r = 0, b = 0, l = 0))) +
+    ggtitle("Larger the Engine, Lower the Mileage, Higher the CO2 Emissions") +
+    xlab(switch(input$x,
+        "Displ" = "Size of Engine (in Liters)",
+        "Gas_Mileage"  = "Gas Mileage (Miles / Gallon)")) +
+    ylab(switch(input$y,
+        "Gas_Mileage"  = "Gas Mileage (Miles / Gallon)",
+        "CO2_Emissions" = "CO2 Emissions (Grams / Mile)" )) 
+
+
+(if (input$VS == "Small Cars") {
+SmallCar1
+} else {
+
+if (input$VS == "Midsize Cars") {
+MidsizeCar1
+} else {
+
+if (input$VS == "Large Cars") {
+LargeCar1
+} else {
+
+if (input$VS == "Station Wagon") {
+StationWagon1
+}}}})
+
+},height = 300, width = 520, res=72, execOnResize = TRUE)
+```
+
+### **Fuel & Transmission Type helps to determine the most Fuel-Efficient Eco-Friendly Car**  
+
+```{r}
+#  
+renderPlot({
+
+(if (input$VS == "Small Cars") {
+SmallCar2
+} else {
+
+if (input$VS == "Midsize Cars") {
+MidsizeCar2
+} else {
+
+if (input$VS == "Large Cars") {
+LargeCar2
+} else {
+
+if (input$VS == "Station Wagon") {
+StationWagon2
+}}}})
+
+},height = 315, width = 520, res=72, execOnResize = TRUE)
+```
+
+Rows {data-height=550, align='center'}
+-----------------------------------------------------------------------
+
+### **TOYOTA , HYUNDAI & KIA: Most Fuel Efficient & Environment Friendly Car Brands** 
+
+```{r}
+renderPlot({
+  
+filtered <- EPA.GV.Data %>% filter(Fuel.Type1 %in% input$FT)
+
+SmallCar3 <- 
+SmallCar3 <- 
+  rbind.data.frame(
+  (filtered %>%
+    filter(Veh.Class == "small car", Fuel.Type1 %in% c("Gasoline"),  SmartWay != "No") %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG > 40)),
+  (filtered %>%
+    filter(Veh.Class == "small car", Fuel.Type1 %in% c("Diesel"),  SmartWay != "No") %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG > 36,Trans == "Auto-9")) ) %>%
+      ggplot(aes(x= reorder(Model,Combine.MPG) ,y=Combine.MPG, fill=Fuel.Type1)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      theme_classic() +
+      geom_text(aes(label = round(Combine.MPG,0)) , size = 6, hjust = 1.2, position = position_dodge(0.9)) +
+      xlab("Vehicle Model & Make") +
+      ylab("Combined Fuel Economy (MPG)") +
+      scale_y_continuous(limits=c(0, 50), breaks = seq(0, 50, 10)) +
+      theme(plot.title = element_text(size = 15, face = "bold", hjust= 0)) + 
+      theme(plot.subtitle = element_text(size = 13)) +
+      theme(axis.title.y = element_blank()) +
+      theme(axis.title.x = element_text(size = 15),axis.text = element_text(size = 13)) +
+      theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+      guides(fill = guide_legend(title = "Fuel Type")) +
+      scale_fill_manual(values = c("goldenrod1", "dodgerblue3")) +
+      scale_x_discrete(labels=c("TOYOTA Prius c"=expression(bold("TOYOTA Prius c")), parse=TRUE)) +
+      ggtitle("TOYOTA Prius c: Best Fuel-Efficient Eco-Friendly Car") + 
+      coord_flip() +
+      labs(caption = "Above Gasoline Powered Cars are among the Best Environnmental Performers") +
+      theme (plot.caption=element_text(hjust=0.5, vjust=-1, size = 13,
+                                          margin=margin(t=35,0,0,0)))
+
+MidsizeCar3 <- 
+rbind.data.frame(
+  (filtered %>%
+    filter(Veh.Class == "midsize car", Fuel.Type1 %in% c("Gasoline"),  SmartWay != "No") %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG > 45 , Trans != "SCV-6")),
+  (filtered %>%
+    filter(Veh.Class == "midsize car", Fuel.Type1 %in% c("Diesel"),  SmartWay != "No") %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG >= 35, Trans != "Man-6")) ) %>%
+        ggplot(aes(x= reorder(Model,Combine.MPG) ,y=Combine.MPG, fill=Fuel.Type1)) +
+        geom_bar(stat = "identity", position = "dodge") +
+        theme_classic() +
+        geom_text(aes(label = round(Combine.MPG,0)) , size = 6, hjust = 1.2, position = position_dodge(0.9)) +
+        xlab("Vehicle Model & Make") +
+        ylab("Combined Fuel Economy (MPG)") +
+        scale_y_continuous(limits=c(0, 60), breaks = seq(0, 60, 10)) +
+        theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.7)) + 
+        theme(plot.subtitle = element_text(size = 13)) +
+        theme(axis.title.y = element_blank()) +
+        theme(axis.title.x = element_text(size = 15),axis.text = element_text(size = 13)) +
+        theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+        guides(fill = guide_legend(title = "Fuel Type")) +
+        scale_fill_manual(values = c("goldenrod1", "dodgerblue3")) +
+        scale_x_discrete(labels=c("HYUNDAI Ioniq Plug-in Hybrid"=expression(bold("HYUNDAI Ioniq Plug-in Hybrid")), parse=TRUE)) +
+        ggtitle("HYUNDAI Ioniq Plug-in Hybrid: Best Fuel-Efficient Eco-Friendly Car") +
+        coord_flip() +
+        labs(caption = "Above Gasoline Powered Cars are among the Best Environnmental Performers") +
+        theme (plot.caption=element_text(hjust=0.5, vjust=-1, size = 13,
+                                          margin=margin(t=35,0,0,0)))
+
+LargeCar3 <- 
+rbind.data.frame(
+  (filtered %>%
+    filter(Veh.Class == "large car", Fuel.Type1 %in% c("Gasoline"),  SmartWay != "No") %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG > 50 )),
+  (filtered %>%
+    filter(Veh.Class == "large car", Fuel.Type1 %in% c("Ethanol")) %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(max(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%  
+    filter(Combine.MPG > 16, Model != "CHRYSLER 300")) ) %>%
+        ggplot(aes(x= reorder(Model,Combine.MPG) ,y=Combine.MPG, fill=Fuel.Type1)) +
+        geom_bar(stat = "identity", position = "dodge") +
+        theme_classic() +
+        geom_text(aes(label = round(Combine.MPG,0)) , size = 6, hjust = 1.2, position = position_dodge(0.9)) +
+        xlab("Vehicle Model & Make") +
+        ylab("Combined Fuel Economy (MPG)") +
+        scale_y_continuous(limits=c(0, 60), breaks = seq(0, 60, 10)) +
+        theme(plot.title = element_text(size = 15, face = "bold", hjust= 0.5)) + 
+        theme(plot.subtitle = element_text(size = 13)) +
+        theme(axis.title.y = element_blank()) +
+        theme(axis.title.x = element_text(size = 15),axis.text = element_text(size = 13)) +
+        theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+        guides(fill = guide_legend(title = "Fuel Type")) +
+        scale_fill_manual(values = c("coral1", "dodgerblue3")) +
+        scale_x_discrete(labels=c("HYUNDAI Ioniq Blue"=expression(bold("HYUNDAI Ioniq Blue")), parse=TRUE)) +
+        ggtitle("HYUNDAI Ioniq Blue: Best Fuel-Efficient Eco-Friendly Car") +
+        coord_flip() +
+        labs(caption = "Above Gasoline Powered Cars are among the Best Environnmental Performers") +
+        theme (plot.caption=element_text(hjust=0.5, vjust=-1, size = 13,
+                                          margin=margin(t=35,0,0,0)))
+
+StationWagon3 <- 
+rbind.data.frame(
+  (filtered %>%
+    filter(Veh.Class == "station wagon", Fuel.Type1 %in% c("Gasoline"),  SmartWay != "No") %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG > 40)),
+  (filtered %>%
+    filter(Veh.Class == "station wagon", Fuel.Type1 %in% c("Diesel")) %>%
+    select(-Cert.Region, -Stnd, -Stnd.Description, -Underhood.ID) %>%
+    group_by(Model, Displ, Cyl, Fuel.Type1,Trans) %>%
+    summarise(Combine.MPG = round(mean(Cmb.MPG.FT1),0),
+              Air.Pollution.Score = max(Air.Pollution.Score),
+              Greenhouse.Gas.Score = max(Greenhouse.Gas.Score)) %>%
+    filter(Combine.MPG >= 34)) ) %>%
+        ggplot(aes(x= reorder(Model,Combine.MPG) ,y=Combine.MPG, fill=Fuel.Type1)) + 
+        geom_bar(stat = "identity", position = "dodge") +
+        theme_classic() +
+        geom_text(aes(label = round(Combine.MPG,0)) , size = 6, hjust = 1.2, position = position_dodge(0.9)) +
+        xlab("Vehicle Model & Make") +
+        ylab("Combined Fuel Economy (MPG)") +
+        scale_y_continuous(limits=c(0, 60), breaks = seq(0, 60, 10)) +
+        theme(plot.title = element_text(size = 15, face = "bold", hjust= 0)) + 
+        theme(plot.subtitle = element_text(size = 13)) +
+        theme(axis.title.y = element_blank()) +
+        theme(axis.title.x = element_text(size = 15),axis.text = element_text(size = 13)) +
+        theme(legend.title = element_text(size = 14 ,color = "black"), legend.text = element_text(size = 13,color = "black")) +
+        guides(fill = guide_legend(title = "Fuel Type")) +
+        scale_fill_manual(values = c("goldenrod1", "dodgerblue3")) +
+        scale_x_discrete(labels=c("KIA Niro FE"=expression(bold("KIA Niro FE")), parse=TRUE)) +
+        ggtitle("KIA Niro FE: Best Fuel-Efficient Eco-Friendly Car") + 
+        coord_flip() +
+        labs(caption = "Above Gasoline Powered Cars are among the Best Environnmental Performers") +
+        theme (plot.caption=element_text(hjust=0.5, vjust=-1, size = 13,
+                                          margin=margin(t=35,0,0,0)))
+     
+
+(if (input$VS == "Small Cars") {
+SmallCar3
+} else {
+
+if (input$VS == "Midsize Cars") {
+MidsizeCar3
+} else {
+
+if (input$VS == "Large Cars") {
+LargeCar3
+} else {
+
+if (input$VS == "Station Wagon") {
+StationWagon3
+}}}})
+
+
+},height = 300, width = 600, res=72, execOnResize = TRUE) 
+
+```
+
